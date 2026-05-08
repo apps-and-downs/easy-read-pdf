@@ -296,7 +296,11 @@ async function renderOriginalPdf() {
     content.innerHTML = '';
 
     const containerWidth = content.clientWidth - 8;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Render at higher resolution than the device pixel ratio so that
+    // pinch-zoom stays sharp. SUPERSAMPLE = 1.75 gives ~3x sharper than
+    // the displayed size on a typical 2x-DPR phone screen.
+    const SUPERSAMPLE = 1.75;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2) * SUPERSAMPLE;
     const userZoom = currentSize / 22;
 
     for (let i = 1; i <= currentPdf.numPages; i++) {
@@ -312,8 +316,10 @@ async function renderOriginalPdf() {
 
       const canvas = document.createElement('canvas');
       canvas.className = 'pdf-page-canvas';
+      // Logical CSS size (what the user sees)
       canvas.style.width = viewport.width + 'px';
       canvas.style.height = viewport.height + 'px';
+      // Backing store size (oversampled for pinch zoom sharpness)
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
 
@@ -643,13 +649,17 @@ function parseParagraphs(lines) {
 }
 
 // ---------- Service worker ----------
-// Temporarily disabled while debugging worker patches.
-// Existing service workers are unregistered to ensure fresh files load.
+// Register service worker for offline support.
+// First visit caches the app shell; subsequent visits work offline.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((regs) => {
-    for (const reg of regs) {
-      reg.unregister();
-      console.log('[ERPDF] Unregistered SW:', reg.scope);
-    }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('sw.js')
+      .then((reg) => {
+        console.log('[ERPDF] SW registered:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('[ERPDF] SW registration failed:', err);
+      });
   });
 }

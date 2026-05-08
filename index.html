@@ -344,13 +344,16 @@
   #content.original-mode {
     font-family: inherit;
     background: transparent;
+    /* When user zooms in (A+), pages can overflow horizontally.
+       Allow the user to scroll. */
+    overflow-x: auto;
   }
 
   #content.original-mode .pdf-page-wrapper {
     margin: 0 auto 16px;
-    max-width: 100%;
-    display: flex;
-    justify-content: center;
+    /* Don't constrain to container width — let zoomed pages keep
+       their natural width so scaling is uniform (not just vertical). */
+    width: fit-content;
     background: #ffffff;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     border-radius: 4px;
@@ -359,8 +362,9 @@
 
   #content.original-mode .pdf-page-canvas {
     display: block;
-    max-width: 100%;
-    height: auto;
+    /* Removed max-width: 100% — that was causing only the height to
+       scale when font size was increased (width got clamped to
+       container while height stayed at viewport height). */
   }
 
   /* In dark mode, soften the white pages slightly so they don't glare */
