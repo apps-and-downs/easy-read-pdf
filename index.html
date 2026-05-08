@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#8B3A2F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1A17" media="(prefers-color-scheme: dark)">
+
+<!-- iOS PWA meta tags -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Easy Read PDF">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<title>Easy Read PDF</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Serif+KR:wght@400;500;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="./pdf.js"></script>
+
+<style>
+  :root {
+    --bg: #F4EDE0;
+    --paper: #FDFAF2;
+    --ink: #2A2823;
+    --ink-soft: #5A564C;
+    --accent: #8B3A2F;
+    --rule: #D4C9B0;
+    --surface-variant: #EBE3D2;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1C1A17;
+      --paper: #26231F;
+      --ink: #E8E1D0;
+      --ink-soft: #B8B0A0;
+      --accent: #E8A598;
+      --rule: #4A4438;
+      --surface-variant: #353128;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1C1A17;
+    --paper: #26231F;
+    --ink: #E8E1D0;
+    --ink-soft: #B8B0A0;
+    --accent: #E8A598;
+    --rule: #4A4438;
+    --surface-variant: #353128;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    /* iOS safe area support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  body { transition: background-color 0.2s ease, color 0.2s ease; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  button:active { transform: scale(0.97); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 14px;
+  }
+
+  .toolbar-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .brand {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-right: auto;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .brand .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  .btn {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+
+  .btn:hover { opacity: 0.85; }
+
+  .controls {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    background: var(--surface-variant);
+    border-radius: 18px;
+    padding: 3px;
+  }
+
+  .controls button {
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    border-radius: 14px;
+    min-width: 36px;
+  }
+
+  .controls button:hover { background: var(--bg); color: var(--ink); }
+
+  .controls .size-label {
+    font-size: 11px;
+    color: var(--ink-soft);
+    min-width: 24px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .theme-toggle {
+    width: 36px; height: 36px;
+    border-radius: 18px;
+    background: var(--surface-variant);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  #file-input { display: none; }
+
+  /* ---------- Drop / Home ---------- */
+  .home {
+    max-width: 600px;
+    margin: 60px auto;
+    padding: 40px 24px;
+    text-align: center;
+  }
+
+  .home .icon-circle {
+    width: 80px; height: 80px;
+    background: var(--accent);
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    color: var(--paper);
+  }
+
+  .home h1 {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 30px;
+    color: var(--ink);
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+  }
+
+  .home p {
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+
+  .home label.btn-big {
+    display: inline-block;
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .home label.btn-big:hover { opacity: 0.9; }
+  .home label.btn-big:active { transform: scale(0.97); }
+
+  .home .hint {
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- iOS install banner ---------- */
+  .ios-install-banner {
+    margin: 24px 16px 0;
+    padding: 16px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink);
+    position: relative;
+  }
+
+  .ios-install-banner.hidden { display: none; }
+
+  .ios-install-banner h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+
+  .ios-install-banner ol {
+    margin-left: 18px;
+    color: var(--ink-soft);
+  }
+
+  .ios-install-banner ol li { margin-bottom: 4px; }
+
+  .ios-install-banner .share-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 13px;
+    vertical-align: middle;
+    margin: 0 2px;
+    line-height: 1;
+  }
+
+  .ios-install-banner .close-x {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 18px;
+    color: var(--ink-soft);
+    background: none;
+    padding: 4px 8px;
+  }
+
+  /* ---------- Reader ---------- */
+  .reader {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+    display: none;
+  }
+
+  .reader.active { display: block; }
+
+  .doc-title {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+    word-break: keep-all;
+  }
+
+  .doc-meta {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 24px;
+  }
+
+  #content {
+    font-family: 'Gowun Batang', 'Noto Serif KR', serif;
+    color: var(--ink);
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  #content p {
+    font-size: var(--reader-size, 22px);
+    line-height: 1.75;
+    margin-bottom: 1.1em;
+  }
+
+  #content p .item-num {
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  #content p strong {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  #content p em {
+    font-style: italic;
+  }
+
+  #content p.bullet-item {
+    padding-left: 1.2em;
+    text-indent: -0.7em;
+  }
+
+  /* ---------- Original PDF view mode ---------- */
+  #content.original-mode {
+    font-family: inherit;
+    background: transparent;
+  }
+
+  #content.original-mode .pdf-page-wrapper {
+    margin: 0 auto 16px;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  #content.original-mode .pdf-page-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* In dark mode, soften the white pages slightly so they don't glare */
+  :root[data-theme="dark"] #content.original-mode .pdf-page-wrapper,
+  :root:not([data-theme="light"]) #content.original-mode .pdf-page-wrapper {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #content.original-mode .pdf-page-wrapper {
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  /* ---------- Status ---------- */
+  .status {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  .status .loader {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid var(--rule);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 14px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status .error-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  /* ---------- Mobile tweaks ---------- */
+  @media (max-width: 600px) {
+    .toolbar { padding: 8px 12px; }
+    .toolbar-inner { gap: 6px; }
+    .brand { font-size: 13px; }
+    .btn { padding: 7px 11px; font-size: 12px; }
+    .controls button { padding: 4px 8px; font-size: 12px; min-width: 32px; }
+    .home { margin: 32px auto; padding: 24px 20px; }
+    .home h1 { font-size: 24px; }
+    .reader { padding: 16px 16px 60px; }
+    .doc-title { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-inner">
+    <div class="brand"><span class="dot"></span> Easy Read PDF</div>
+    <button id="theme-btn" class="theme-toggle" title="테마 전환" aria-label="테마 전환">🌙</button>
+    <button id="mode-toggle" class="btn" style="display:none">원본 보기</button>
+    <label class="btn" for="file-input" id="open-btn">PDF 열기</label>
+    <input type="file" id="file-input" accept="application/pdf">
+    <div class="controls" id="size-controls" style="display:none">
+      <button id="size-down" title="글자 작게" aria-label="글자 작게">A−</button>
+      <span class="size-label" id="size-label">22</span>
+      <button id="size-up" title="글자 크게" aria-label="글자 크게">A+</button>
+    </div>
+  </div>
+</div>
+
+<div id="ios-install-banner" class="ios-install-banner hidden">
+  <button class="close-x" id="banner-close" aria-label="닫기">×</button>
+  <h3>📱 홈 화면에 앱처럼 설치하기</h3>
+  <ol>
+    <li>아래 <span class="share-icon">↑</span> 공유 버튼 누르기</li>
+    <li>"홈 화면에 추가" 선택</li>
+    <li>"추가" 눌러서 완료</li>
+  </ol>
+</div>
+
+<div class="home" id="home">
+  <div class="icon-circle">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+    </svg>
+  </div>
+  <h1>큰 글자로 편하게</h1>
+  <p>
+    PDF 파일을 올리면 본문 텍스트만 추출해서<br>
+    읽기 좋은 크기로 보여드려요.
+  </p>
+  <label class="btn-big" for="file-input">PDF 파일 선택</label>
+  <p class="hint">파일은 기기 안에서만 처리되고 어디로도 전송되지 않아요</p>
+</div>
+
+<div class="reader" id="reader">
+  <div class="doc-title" id="doc-title"></div>
+  <div class="doc-meta" id="doc-meta"></div>
+  <div id="content"></div>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
