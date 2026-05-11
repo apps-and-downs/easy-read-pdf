@@ -660,7 +660,21 @@ function parseParagraphs(lines) {
         const last = allSegs.length > 0 ? allSegs[allSegs.length - 1] : null;
         const lastBold = last ? last.bold : false;
         const lastItalic = last ? last.italic : false;
-        allSegs.push({ text: ' ', bold: lastBold, italic: lastItalic });
+
+        // Decide whether to insert a space between consecutive lines.
+        // For English, lines never break mid-word, so a space is correct.
+        // For Korean, lines can break mid-word (e.g. "유사 사" + "례가..."),
+        // so we should NOT insert a space when both surrounding chars are Hangul.
+        const prevText = last ? last.text : '';
+        const nextLineText = buffer[i].plainText || '';
+        const lastChar = prevText.replace(/\s+$/, '').slice(-1);
+        const firstChar = nextLineText.replace(/^\s+/, '').charAt(0);
+        const isHangul = (c) => /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(c);
+        const joinHangul = isHangul(lastChar) && isHangul(firstChar);
+
+        if (!joinHangul) {
+          allSegs.push({ text: ' ', bold: lastBold, italic: lastItalic });
+        }
       }
       for (const seg of buffer[i].segments) {
         allSegs.push({ text: seg.text, bold: seg.bold, italic: seg.italic });
