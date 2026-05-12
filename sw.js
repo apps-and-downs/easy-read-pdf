@@ -1,7 +1,7 @@
 // Easy Read PDF — Service Worker
 // Caches the app shell so it works offline after first visit.
 
-const CACHE_NAME = 'easy-read-pdf-v21';
+const CACHE_NAME = 'easy-read-pdf-v22';
 const APP_SHELL = [
   './',
   './index.html',

@@ -679,15 +679,6 @@ function parseParagraphs(lines) {
     const isShort = ratio < 0.92;
     const isVeryShort = ratio < 0.55;
 
-    // Debug logging (remove after fix verified)
-    if (endsWithSentence && text.length > 5) {
-      console.log('[ERPDF para?]',
-        'ratio=' + ratio.toFixed(2),
-        'short=' + isShort,
-        'punct=' + endsWithSentence,
-        '|', text.slice(-30));
-    }
-
     // (a) Very short lines that end with sentence punctuation
     if (isVeryShort && endsWithSentence) return true;
 

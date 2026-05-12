@@ -10420,8 +10420,6 @@ class PartialEvaluator {
           black: font.black,
           italic: font.italic
         };
-        // ERPDF: brief diagnostic
-        console.log('[ERPDF]', loadedName, 'bold=' + font.bold, 'italic=' + font.italic);
       }
       textContentItem.fontName = loadedName;
       const trm = textContentItem.transform = getCurrentTextTransform();
