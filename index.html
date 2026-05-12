@@ -425,8 +425,8 @@
     <div class="brand"><span class="dot"></span> Easy Read PDF</div>
     <button id="theme-btn" class="theme-toggle" title="테마 전환" aria-label="테마 전환">🌙</button>
     <button id="mode-toggle" class="btn" style="display:none">원본 보기</button>
-    <label class="btn" for="file-input" id="open-btn">PDF 열기</label>
-    <input type="file" id="file-input" accept="application/pdf">
+    <button class="btn" id="open-btn">PDF 열기</button>
+    <input type="file" id="file-input" accept="application/pdf,.pdf">
     <div class="controls" id="size-controls" style="display:none">
       <button id="size-down" title="글자 작게" aria-label="글자 작게">A−</button>
       <span class="size-label" id="size-label">22</span>
@@ -457,7 +457,7 @@
     PDF 파일을 올리면 본문 텍스트만 추출해서<br>
     읽기 좋은 크기로 보여드려요.
   </p>
-  <label class="btn-big" for="file-input">PDF 파일 선택</label>
+  <button class="btn-big" id="open-btn-big">PDF 파일 선택</button>
   <p class="hint">파일은 기기 안에서만 처리되고 어디로도 전송되지 않아요</p>
 </div>
 

@@ -136,8 +136,24 @@ bannerClose.addEventListener('click', () => {
 });
 
 // ---------- File handling ----------
+
+// On iOS Safari running as a PWA (Add to Home Screen), label[for=...] doesn't
+// always trigger the file picker reliably. Use explicit button → input.click()
+// instead, which is more robust across iOS versions.
+function triggerFilePicker() {
+  // Reset value first so re-selecting the same file still fires `change`.
+  fileInput.value = '';
+  fileInput.click();
+}
+
+const openBtn = document.getElementById('open-btn');
+const openBtnBig = document.getElementById('open-btn-big');
+if (openBtn) openBtn.addEventListener('click', triggerFilePicker);
+if (openBtnBig) openBtnBig.addEventListener('click', triggerFilePicker);
+
 fileInput.addEventListener('change', (e) => {
-  if (e.target.files[0]) handleFile(e.target.files[0]);
+  const f = e.target.files && e.target.files[0];
+  if (f) handleFile(f);
 });
 
 async function handleFile(file) {
@@ -204,6 +220,9 @@ async function handleFile(file) {
     modeToggle.style.display = 'inline-block';
   } catch (err) {
     console.error(err);
+    // Show the actual error message so we can diagnose iOS-specific failures.
+    const errMsg = (err && (err.message || err.toString())) || 'Unknown error';
+    const errStack = (err && err.stack) ? String(err.stack).slice(0, 400) : '';
     content.innerHTML = `
       <div class="status">
         <div class="error-icon">⚠️</div>
@@ -211,8 +230,25 @@ async function handleFile(file) {
         <div style="margin-top:8px;font-size:12px;opacity:0.7">
           스캔된 이미지 PDF는 텍스트 추출이 안 될 수 있어요
         </div>
+        <details style="margin-top:16px;font-size:11px;opacity:0.6;text-align:left;max-width:90%;">
+          <summary>에러 정보 (개발자용)</summary>
+          <div style="margin-top:8px;font-family:monospace;word-break:break-word;">
+            <div><strong>Message:</strong> ${escapeHtml(errMsg)}</div>
+            <div style="margin-top:6px;"><strong>UA:</strong> ${escapeHtml(navigator.userAgent.slice(0, 100))}</div>
+            ${errStack ? `<div style="margin-top:6px;white-space:pre-wrap;"><strong>Stack:</strong>\n${escapeHtml(errStack)}</div>` : ''}
+          </div>
+        </details>
       </div>`;
   }
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ---------- Reflow mode rendering ----------
@@ -596,10 +632,15 @@ function parseParagraphs(lines) {
   // - bullet character at start of line
   // - common ASCII bullets like "- " or "* " followed by content
   const numberedStart = /^\s*\d{1,2}[.)]\s+\S/;
-  const bulletStart = /^\s*[•●○◦▪▫■□‣⁃▶▸◆◇★☆※⦁]\s*/;
+  // Bullets / heading-marker glyphs commonly used by Word, Google Docs, etc.
+  // Includes circles (•●○◦⦁⚫⚪), squares (▪▫■□), arrows (▶▸▷),
+  // diamonds (◆◇), stars (★☆), check marks (✓✔), and Korean documents'
+  // (※❖❀) bullet-style ornaments.
+  const bulletStart = /^\s*[•●○◦▪▫■□‣⁃▶▸▷◆◇★☆※⦁⚫⚪✓✔❖❀]\s*/;
   const dashStart = /^\s*[-*]\s+\S/;
   const isItemStart = (text) =>
     numberedStart.test(text) || bulletStart.test(text) || dashStart.test(text);
+  const isBulletLine = (text) => bulletStart.test(text);
 
   // Compute the "typical" right edge per column.
   // For 2-column layouts, the left column ends much earlier than the right,
@@ -634,8 +675,18 @@ function parseParagraphs(lines) {
     if (re <= 0) return false;
 
     const endsWithSentence = sentenceEndRe.test(text);
-    const isShort = line.xEnd < re * 0.92;
-    const isVeryShort = line.xEnd < re * 0.55;
+    const ratio = line.xEnd / re;
+    const isShort = ratio < 0.92;
+    const isVeryShort = ratio < 0.55;
+
+    // Debug logging (remove after fix verified)
+    if (endsWithSentence && text.length > 5) {
+      console.log('[ERPDF para?]',
+        'ratio=' + ratio.toFixed(2),
+        'short=' + isShort,
+        'punct=' + endsWithSentence,
+        '|', text.slice(-30));
+    }
 
     // (a) Very short lines that end with sentence punctuation
     if (isVeryShort && endsWithSentence) return true;
@@ -726,6 +777,15 @@ function parseParagraphs(lines) {
     if (isItemStart(trimmed)) {
       flush();
       buffer.push(line);
+      // For bullet headings, also END the paragraph after the bullet line.
+      // Bullets are usually short headings on their own line, with body text
+      // that follows belonging to a separate paragraph. (Numbered items like
+      // "1) foo" don't get auto-flushed because the body often continues on
+      // the same logical paragraph.)
+      if (isBulletLine(trimmed)) {
+        flush();
+        continue;
+      }
     } else {
       buffer.push(line);
     }
