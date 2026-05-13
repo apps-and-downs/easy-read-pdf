@@ -4,7 +4,7 @@
   "description": "PDF를 큰 글자로 편하게 읽기",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen-overlays-content",
+  "display": "fullscreen",
   "orientation": "any",
   "background_color": "#F4EDE0",
   "theme_color": "#8B3A2F",
